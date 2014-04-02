@@ -14,8 +14,6 @@ package org.eclipse.jetty.nosql.kvs;
 //You may elect to redistribute this code under either of these licenses.
 //========================================================================
 
-import java.util.Enumeration;
-
 import org.eclipse.jetty.nosql.NoSqlSession;
 import org.eclipse.jetty.nosql.NoSqlSessionManager;
 import org.eclipse.jetty.nosql.kvs.session.AbstractSessionFactory;
@@ -26,6 +24,10 @@ import org.eclipse.jetty.server.SessionIdManager;
 import org.eclipse.jetty.server.session.AbstractSession;
 import org.eclipse.jetty.util.log.Log;
 import org.eclipse.jetty.util.log.Logger;
+
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.Map;
 
 public class KeyValueStoreSessionManager extends NoSqlSessionManager {
 	private final static Logger log = Log.getLogger("org.eclipse.jetty.nosql.kvs.KeyValueStoreSessionManager");
@@ -45,11 +47,15 @@ public class KeyValueStoreSessionManager extends NoSqlSessionManager {
 		super.doStart();
 		if (_cookieDomain == null) {
 			String[] cookieDomains = getContextHandler().getVirtualHosts();
+			// commented as api dropped in jetty9
+			//if (cookieDomains == null || cookieDomains.length == 0)
+			//{
+			//    cookieDomains = getContextHandler().getConnectorNames();
+			//}
 			if (cookieDomains == null || cookieDomains.length == 0) {
-				cookieDomains = getContextHandler().getConnectorNames();
-			}
-			if (cookieDomains == null || cookieDomains.length == 0) {
-				cookieDomains = new String[] { "*" };
+				cookieDomains = new String[]{
+						"*"
+				};
 			}
 			this._cookieDomain = cookieDomains[0];
 		}
@@ -63,6 +69,7 @@ public class KeyValueStoreSessionManager extends NoSqlSessionManager {
 		if (sessionFactory == null) {
 			sessionFactory = new SerializableSessionFactory();
 		}
+		log.info("use " + sessionFactory.getClass().getSimpleName() + " as session factory.");
 		try {
 			// use context class loader during object deserialization.
 			// thanks Daniel Peters!
@@ -71,7 +78,7 @@ public class KeyValueStoreSessionManager extends NoSqlSessionManager {
 			// FIXME: is there any safe way to refer context's class loader?
 			// getContext().getClassLoader() may raise SecurityException.
 			// this will be determine by policy configuration of JRE.
-		} catch(SecurityException error) {
+		} catch (SecurityException error) {
 		}
 		log.info("started.");
 	}
@@ -87,26 +94,25 @@ public class KeyValueStoreSessionManager extends NoSqlSessionManager {
 
 	/* ------------------------------------------------------------ */
 	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see
-	 * org.eclipse.jetty.server.session.AbstractSessionManager#setSessionIdManager
-	 * (org.eclipse.jetty.server.SessionIdManager)
-	 */
+     * (non-Javadoc)
+     * 
+     * @see org.eclipse.jetty.server.session.AbstractSessionManager#setSessionIdManager
+     * (org.eclipse.jetty.server.SessionIdManager)
+     */
 	@Override
-	public void setSessionIdManager(SessionIdManager idManager) {
+	public void setSessionIdManager(final SessionIdManager idManager) {
 		try {
 			KeyValueStoreSessionIdManager kvsIdManager = (KeyValueStoreSessionIdManager) idManager;
 			super.setSessionIdManager(kvsIdManager);
 		} catch (ClassCastException error) {
 			log.warn("unable to cast " + idManager.getClass() + " to " + KeyValueStoreSessionIdManager.class + ".");
-			throw(error);
+			throw (error);
 		}
 	}
 
 	/* ------------------------------------------------------------ */
 	@Override
-	protected Object save(NoSqlSession session, Object version, boolean activateAfterSave) {
+	protected Object save(final NoSqlSession session, final Object version, final boolean activateAfterSave) {
 		try {
 			log.debug("save:" + session);
 			session.willPassivate();
@@ -130,11 +136,12 @@ public class KeyValueStoreSessionManager extends NoSqlSessionManager {
 			data.setVersion(longVersion);
 
 			try {
-				if(!setKey(session.getId(), data)) {
-					throw(new RuntimeException("unable to set key: data=" + data));
+				if (!setKey(session.getId(), data)) {
+					throw (new RuntimeException("unable to set key: data=" + data));
 				}
-			} catch(TranscoderException error) {
-				throw(new IllegalArgumentException("unable to serialize session: id=" + session.getId() + ", data=" + data, error));
+			} catch (TranscoderException error) {
+				throw (new IllegalArgumentException("unable to serialize session: id=" + session.getId() + ", data="
+						+ data, error));
 			}
 			log.debug("save:db.sessions.update(" + session.getId() + "," + data + ")");
 
@@ -151,13 +158,13 @@ public class KeyValueStoreSessionManager extends NoSqlSessionManager {
 
 	/*------------------------------------------------------------ */
 	@Override
-	protected Object refresh(NoSqlSession session, Object version) {
+	protected Object refresh(final NoSqlSession session, Object version) {
 		log.debug("refresh " + session);
 		ISerializableSession data = null;
 		try {
 			data = getKey(session.getClusterId());
-		} catch(TranscoderException error) {
-			throw(new IllegalStateException("unable to deserialize session: id=" + session.getClusterId(), error));
+		} catch (TranscoderException error) {
+			throw (new IllegalStateException("unable to deserialize session: id=" + session.getClusterId(), error));
 		}
 		// check if our in memory version is the same as what is on KVS
 		if (version != null) {
@@ -192,7 +199,7 @@ public class KeyValueStoreSessionManager extends NoSqlSessionManager {
 		// followed by bindings and then activation.
 		session.willPassivate();
 		try {
-			for (Enumeration<String> e = data.getAttributeNames(); e.hasMoreElements();) {
+			for (Enumeration<String> e = data.getAttributeNames(); e.hasMoreElements(); ) {
 				String name = e.nextElement();
 				Object value = data.getAttribute(name);
 				// only bind value if it didn't exist in session
@@ -205,10 +212,10 @@ public class KeyValueStoreSessionManager extends NoSqlSessionManager {
 			}
 
 			// cleanup, remove values from session, that don't exist in data anymore:
-			for (String name: session.getNames()) {
+			for (String name : session.getNames()) {
 				if (!data.getAttributeMap().containsKey(name)) {
 					session.doPutOrRemove(name, null);
-					session.unbindValue(name,  session.getAttribute(name));
+					session.unbindValue(name, session.getAttribute(name));
 				}
 			}
 
@@ -222,20 +229,19 @@ public class KeyValueStoreSessionManager extends NoSqlSessionManager {
 	}
 
 	@Override
-	protected void addSession(AbstractSession session) {
+	protected void addSession(final AbstractSession session) {
 		// nop
 	}
-	
+
 	@Override
-	public AbstractSession getSession(String idInCluster)
-	{
+	public AbstractSession getSession(final String idInCluster) {
 		AbstractSession session;
 		return loadSession(idInCluster);
 	}
 
 	/*------------------------------------------------------------ */
 	@Override
-	protected NoSqlSession loadSession(String clusterId) {
+	protected NoSqlSession loadSession(final String clusterId) {
 		log.debug("loadSession: loading: id=" + clusterId);
 		ISerializableSession data = getKey(clusterId);
 		log.debug("loadSession: loaded: id=" + clusterId + ", data=" + data);
@@ -246,7 +252,7 @@ public class KeyValueStoreSessionManager extends NoSqlSessionManager {
 
 		boolean valid = data.isValid();
 		if (!valid) {
-			log.debug("loadSession: id=" + clusterId + ", data="+ data + " has been invalidated.");
+			log.debug("loadSession: id=" + clusterId + ", data=" + data + " has been invalidated.");
 			return null;
 		}
 
@@ -257,7 +263,8 @@ public class KeyValueStoreSessionManager extends NoSqlSessionManager {
 
 		synchronized (_cookieDomain) {
 			if (_cookieDomain != null && !data.getDomain().equals("*") && !_cookieDomain.equals(data.getDomain())) {
-				log.warn("loadSession: invalid cookie domain (expected:" + _cookieDomain + ", got:" + data.getDomain() + ")");
+				log.warn("loadSession: invalid cookie domain (expected:" + _cookieDomain + ", got:" + data.getDomain()
+						+ ")");
 				return null;
 			}
 		}
@@ -273,18 +280,18 @@ public class KeyValueStoreSessionManager extends NoSqlSessionManager {
 			long version = data.getVersion();
 			long created = data.getCreationTime();
 			long accessed = data.getAccessed();
-			NoSqlSession session = new NoSqlSession(this, created, accessed, clusterId, version);
+			SmarterNoSqlSession session = new SmarterNoSqlSession(this, created, accessed, clusterId, version);
 
 			// get the attributes for the context
 			Enumeration<String> attrs = data.getAttributeNames();
 
-//			log.debug("attrs: " + Collections.list(attrs));
+			//			log.debug("attrs: " + Collections.list(attrs));
 			if (attrs != null) {
 				while (attrs.hasMoreElements()) {
 					String name = attrs.nextElement();
 					Object value = data.getAttribute(name);
 
-					session.doPutOrRemove(name, value);
+					session.initializeAttribute(name, value);
 					session.bindValue(name, value);
 
 				}
@@ -300,7 +307,7 @@ public class KeyValueStoreSessionManager extends NoSqlSessionManager {
 
 	/*------------------------------------------------------------ */
 	@Override
-	protected boolean remove(NoSqlSession session) {
+	protected boolean remove(final NoSqlSession session) {
 		if (session == null) {
 			return false;
 		} else {
@@ -309,7 +316,7 @@ public class KeyValueStoreSessionManager extends NoSqlSessionManager {
 	}
 
 	@Override
-	protected boolean removeSession(String idInCluster) {
+	protected boolean removeSession(final String idInCluster) {
 		return deleteKey(idInCluster);
 	}
 
@@ -323,18 +330,18 @@ public class KeyValueStoreSessionManager extends NoSqlSessionManager {
 
 	/*------------------------------------------------------------ */
 	@Override
-	protected void invalidateSession(String idInCluster) {
+	protected void invalidateSession(final String idInCluster) {
 		// do nothing.
 		// invalidated sessions will not save in KeyValueStoreSessionManager.save()
 		log.debug("invalidateSession: invalidating " + idInCluster);
 	}
 
-	protected String mangleKey(String idInCluster) {
+	protected String mangleKey(final String idInCluster) {
 		return idInCluster;
 	}
 
-	protected ISerializableSession getKey(String idInCluster) throws TranscoderException {
-		byte[] raw = ((KeyValueStoreSessionIdManager)_sessionIdManager).getKey(mangleKey(idInCluster));
+	protected ISerializableSession getKey(final String idInCluster) throws TranscoderException {
+		byte[] raw = ((KeyValueStoreSessionIdManager) _sessionIdManager).getKey(mangleKey(idInCluster));
 		if (raw == null) {
 			return null;
 		} else {
@@ -342,30 +349,33 @@ public class KeyValueStoreSessionManager extends NoSqlSessionManager {
 		}
 	}
 
-	protected boolean setKey(String idInCluster, ISerializableSession data) throws TranscoderException {
+	protected boolean setKey(final String idInCluster, final ISerializableSession data) throws TranscoderException {
 		byte[] raw = getSessionFactory().pack(data);
 		if (raw == null) {
 			return false;
 		} else {
-			return ((KeyValueStoreSessionIdManager) _sessionIdManager).setKey(mangleKey(idInCluster), raw, getMaxInactiveInterval());
+			return ((KeyValueStoreSessionIdManager) _sessionIdManager).setKey(mangleKey(idInCluster), raw,
+					getMaxInactiveInterval());
 		}
 	}
 
-	protected boolean addKey(String idInCluster, ISerializableSession data) throws TranscoderException {
+	protected boolean addKey(final String idInCluster, final ISerializableSession data) throws TranscoderException {
 		byte[] raw = getSessionFactory().pack(data);
 		if (raw == null) {
 			return false;
 		} else {
-			return ((KeyValueStoreSessionIdManager) _sessionIdManager).addKey(mangleKey(idInCluster), raw, getMaxInactiveInterval());
+			return ((KeyValueStoreSessionIdManager) _sessionIdManager).addKey(mangleKey(idInCluster), raw,
+					getMaxInactiveInterval());
 		}
 	}
 
-	protected boolean deleteKey(String idInCluster) {
-		return ((KeyValueStoreSessionIdManager)_sessionIdManager).deleteKey(mangleKey(idInCluster));
+	protected boolean deleteKey(final String idInCluster) {
+		return ((KeyValueStoreSessionIdManager) _sessionIdManager).deleteKey(mangleKey(idInCluster));
 	}
 
 	/**
-	 * @deprecated from 0.3.1. use #{@link org.eclipse.jetty.nosql.kvs.KeyValueStoreSessionManager#getSessionFactory()} instead.
+	 * @deprecated from 0.3.1. use #{@link org.eclipse.jetty.nosql.kvs.KeyValueStoreSessionManager#getSessionFactory()}
+	 * instead.
 	 */
 	@Deprecated
 	public AbstractSessionFactory getSessionFacade() {
@@ -373,10 +383,12 @@ public class KeyValueStoreSessionManager extends NoSqlSessionManager {
 	}
 
 	/**
-	 * @deprecated from 0.3.1. use #{@link KeyValueStoreSessionManager#setSessionFactory(org.eclipse.jetty.nosql.kvs.session.AbstractSessionFactory)} instead.
+	 * @deprecated from 0.3.1. use #
+	 * {@link KeyValueStoreSessionManager#setSessionFactory(org.eclipse.jetty.nosql.kvs.session.AbstractSessionFactory)}
+	 * instead.
 	 */
 	@Deprecated
-	public void setSessionFacade(AbstractSessionFactory sf) {
+	public void setSessionFacade(final AbstractSessionFactory sf) {
 		log.warn("deprecated setter `setSessionFacade' was called. this will be removed in future release.");
 		this.sessionFactory = sf;
 	}
@@ -385,7 +397,7 @@ public class KeyValueStoreSessionManager extends NoSqlSessionManager {
 		return sessionFactory;
 	}
 
-	public void setSessionFactory(AbstractSessionFactory sf) {
+	public void setSessionFactory(final AbstractSessionFactory sf) {
 		this.sessionFactory = sf;
 	}
 
@@ -393,7 +405,7 @@ public class KeyValueStoreSessionManager extends NoSqlSessionManager {
 	 * @deprecated from 0.3.0. this is false by default and is not an option.
 	 */
 	@Deprecated
-	public void setSticky(boolean sticky) { // TODO: remove
+	public void setSticky(final boolean sticky) { // TODO: remove
 		log.warn("deprecated setter `setSticky' was called. this will be removed in future release.");
 	}
 
@@ -403,5 +415,81 @@ public class KeyValueStoreSessionManager extends NoSqlSessionManager {
 	@Deprecated
 	public boolean isSticky() { // TODO: remove
 		return false;
+	}
+
+	protected void update(final NoSqlSession session, final String newClusterId, final String newNodeId)
+			throws Exception {
+		ISerializableSession data = getKey(session.getClusterId());
+		if (data == null) {
+			log.warn("Couldn't get session data for old key {}", session.getClusterId());
+			return;
+		}
+		deleteKey(session.getClusterId());
+		setKey(newClusterId, data);
+	}
+
+	/*
+	 * Overrides some of the state logic in NoSqlSession to avoid unnecessary session store writes when the
+	 * session attributes have not changed.  This is a workaround for Jetty issue 413484:
+	 * https://bugs.eclipse.org/bugs/show_bug.cgi?id=413484
+	 */
+	private static class SmarterNoSqlSession extends NoSqlSession {
+		private HashMap<String, Integer> attributeHashes = new HashMap<String, Integer>();
+
+		public SmarterNoSqlSession(NoSqlSessionManager manager, long created, long accessed, String clusterId, Object version) {
+			super(manager, created, accessed, clusterId, version);
+		}
+
+		/**
+		 * Sets an attribute without changing the session's "dirty" state.  Use this only when initializing a
+		 * freshly loaded session.
+		 */
+		public void initializeAttribute(String name, Object value) {
+			getAttributeMap().put(name, value);
+			attributeHashes.put(name, safeHash(value));
+		}
+
+		/**
+		 * Overridden to change the attribute (which sets the "dirty" state) only if the new attribute value
+		 * is not equal to the old attribute value.
+		 */
+		@Override
+		public Object doPutOrRemove(String name, Object value) {
+			Object oldValue = doGet(name);
+			return (valueEquals(oldValue, value)) ? value : super.doPutOrRemove(name, value);
+		}
+
+		/**
+		 * Overridden to update the session state prior to saving if any attribute value has a different
+		 * hash code than it used to.  This allows us to detect changes when a mutable object is used as
+		 * an attribute value.
+		 */
+		@Override
+		protected void complete() {
+			for (Map.Entry<String, Object> a : getAttributeMap().entrySet()) {
+				Integer oldHash = attributeHashes.get(a.getKey());
+				if (oldHash == null || oldHash.intValue() != safeHash(a.getValue())) {
+					// super.doPutOrRemove always sets the dirty state
+					super.doPutOrRemove(a.getKey(), a.getValue());
+				}
+			}
+			super.complete();
+		}
+
+		@Override
+		protected void save(boolean activate) {
+			for (Map.Entry<String, Object> a : getAttributeMap().entrySet()) {
+				attributeHashes.put(a.getKey(), safeHash(a.getValue()));
+			}
+			super.save(activate);
+		}
+
+		private boolean valueEquals(Object ov, Object nv) {
+			return (nv == null) ? (ov == null) : nv.equals(ov);
+		}
+
+		private int safeHash(Object o) {
+			return (o == null) ? 0 : o.hashCode();
+		}
 	}
 }
