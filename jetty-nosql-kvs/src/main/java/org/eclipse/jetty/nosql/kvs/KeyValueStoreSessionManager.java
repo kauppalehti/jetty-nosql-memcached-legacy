@@ -70,6 +70,9 @@ public class KeyValueStoreSessionManager extends NoSqlSessionManager {
 			sessionFactory = new SerializableSessionFactory();
 		}
 		log.info("use " + sessionFactory.getClass().getSimpleName() + " as session factory.");
+		if (super.getSessionIdManager() != null) {
+			log.info("use " + super.getSessionIdManager().getClass().getSimpleName() + " as session id manager.");
+		}
 		try {
 			// use context class loader during object deserialization.
 			// thanks Daniel Peters!
@@ -334,6 +337,7 @@ public class KeyValueStoreSessionManager extends NoSqlSessionManager {
 		// do nothing.
 		// invalidated sessions will not save in KeyValueStoreSessionManager.save()
 		log.debug("invalidateSession: invalidating " + idInCluster);
+		super.invalidateSession(idInCluster);
 	}
 
 	protected String mangleKey(final String idInCluster) {
