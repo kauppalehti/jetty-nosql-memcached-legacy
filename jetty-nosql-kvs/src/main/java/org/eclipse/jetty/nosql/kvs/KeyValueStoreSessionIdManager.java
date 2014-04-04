@@ -58,7 +58,8 @@ public abstract class KeyValueStoreSessionIdManager extends AbstractSessionIdMan
 
 	protected String _keyPrefix = "";
 	protected String _keySuffix = "";
-	protected IKeyValueStoreClient _client = null;
+	protected KeyValueStoreClientPool _clients = null;
+	protected IKeyValueStoreClient _client1, _client2;
 	protected String _serverString = "";
 	protected int _timeoutInMs = 1000;
 
@@ -66,7 +67,6 @@ public abstract class KeyValueStoreSessionIdManager extends AbstractSessionIdMan
 	public KeyValueStoreSessionIdManager(Server server, String serverString) throws IOException {
 		super(new Random());
 		this._server = server;
-//		this._client = newClient(serverString); // will be initialized on startup
 		this._serverString = serverString;
 	}
 
@@ -82,11 +82,21 @@ public abstract class KeyValueStoreSessionIdManager extends AbstractSessionIdMan
 	protected void doStart() throws Exception {
 		log.info("starting...");
 		super.doStart();
-		_client = newClient(_serverString);
-		if (_client == null) {
+
+		_client1 = newClient(_serverString);
+		if (_client1 == null) {
 			throw new IllegalStateException("newClient(" + _serverString + ") returns null.");
 		}
-		_client.establish();
+		_client1.establish();
+
+		_client2 = newClient(_serverString);
+		if (_client2 == null) {
+			throw new IllegalStateException("newClient(" + _serverString + ") returns null.");
+		}
+		_client2.establish();
+
+		_clients = new KeyValueStoreClientPool(_client1, _client2);
+
 		log.info("started.");
 	}
 
@@ -94,10 +104,15 @@ public abstract class KeyValueStoreSessionIdManager extends AbstractSessionIdMan
 	@Override
 	protected void doStop() throws Exception {
 		log.info("stopping...");
-		if (_client != null) {
-			_client.shutdown();
-			_client = null;
+		if (_client1 != null) {
+			_client1.shutdown();
+			_client1 = null;
 		}
+		if (_client2 != null) {
+			_client2.shutdown();
+			_client2 = null;
+		}
+		_clients = null;
 		super.doStop();
 		log.info("stopped.");
 	}
@@ -172,7 +187,7 @@ public abstract class KeyValueStoreSessionIdManager extends AbstractSessionIdMan
 		log.debug("get: id=" + idInCluster);
 		byte[] raw = null;
 		try {
-			raw = _client.get(mangleKey(idInCluster));
+			raw = _clients.get().get(mangleKey(idInCluster));
 		} catch (KeyValueStoreClientException error) {
 			log.warn("unable to get key: id=" + idInCluster, error);
 		}
@@ -190,7 +205,7 @@ public abstract class KeyValueStoreSessionIdManager extends AbstractSessionIdMan
 		log.debug("set: id=" + idInCluster + ", expiry=" + expiry);
 		boolean result = false;
 		try {
-			result = _client.set(mangleKey(idInCluster), raw, expiry);
+			result = _clients.get().set(mangleKey(idInCluster), raw, expiry);
 		} catch (KeyValueStoreClientException error) {
 			log.warn("unable to set key: id=" + idInCluster, error);
 		}
@@ -208,7 +223,7 @@ public abstract class KeyValueStoreSessionIdManager extends AbstractSessionIdMan
 		log.debug("add: id=" + idInCluster + ", expiry=" + expiry);
 		boolean result = false;
 		try {
-			result = _client.add(mangleKey(idInCluster), raw, expiry);
+			result = _clients.get().add(mangleKey(idInCluster), raw, expiry);
 		} catch (KeyValueStoreClientException error) {
 			log.warn("unable to add key: id=" + idInCluster, error);
 		}
@@ -219,7 +234,7 @@ public abstract class KeyValueStoreSessionIdManager extends AbstractSessionIdMan
 		log.debug("delete: id=" + idInCluster);
 		boolean result = false;
 		try {
-			result = _client.delete(mangleKey(idInCluster));
+			result = _clients.get().delete(mangleKey(idInCluster));
 		} catch (KeyValueStoreClientException error) {
 			log.warn("unable to delete key: id=" + idInCluster, error);
 		}
