@@ -15,10 +15,7 @@ package org.eclipse.jetty.nosql.kvs;
 //========================================================================
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.LinkedHashSet;
 import java.util.Random;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import javax.servlet.http.HttpServletRequest;
@@ -58,10 +55,11 @@ public abstract class KeyValueStoreSessionIdManager extends AbstractSessionIdMan
 
 	protected String _keyPrefix = "";
 	protected String _keySuffix = "";
-	protected KeyValueStoreClientPool _clients = null;
-	protected IKeyValueStoreClient _client1, _client2;
+	protected KeyValueStoreClientPool _pool = null;
+	protected IKeyValueStoreClient[] _clients;
 	protected String _serverString = "";
 	protected int _timeoutInMs = 1000;
+	protected int _poolSize = 2;
 
 	/* ------------------------------------------------------------ */
 	public KeyValueStoreSessionIdManager(Server server, String serverString) throws IOException {
@@ -83,19 +81,11 @@ public abstract class KeyValueStoreSessionIdManager extends AbstractSessionIdMan
 		log.info("starting...");
 		super.doStart();
 
-		_client1 = newClient(_serverString);
-		if (_client1 == null) {
-			throw new IllegalStateException("newClient(" + _serverString + ") returns null.");
+		_clients = new IKeyValueStoreClient[_poolSize];
+		for (int i = 0; i < _poolSize; i++) {
+			_clients[i] = createClient();
 		}
-		_client1.establish();
-
-		_client2 = newClient(_serverString);
-		if (_client2 == null) {
-			throw new IllegalStateException("newClient(" + _serverString + ") returns null.");
-		}
-		_client2.establish();
-
-		_clients = new KeyValueStoreClientPool(_client1, _client2);
+		_pool = new KeyValueStoreClientPool(_clients);
 
 		log.info("started.");
 	}
@@ -104,17 +94,30 @@ public abstract class KeyValueStoreSessionIdManager extends AbstractSessionIdMan
 	@Override
 	protected void doStop() throws Exception {
 		log.info("stopping...");
-		if (_client1 != null) {
-			_client1.shutdown();
-			_client1 = null;
-		}
-		if (_client2 != null) {
-			_client2.shutdown();
-			_client2 = null;
+
+		for (int i = 0; i < _poolSize; i++) {
+			destroyClient(_clients[i]);
 		}
 		_clients = null;
+		_pool = null;
 		super.doStop();
+
 		log.info("stopped.");
+	}
+
+	private IKeyValueStoreClient createClient() throws Exception {
+		IKeyValueStoreClient client = newClient(_serverString);
+		if (client == null) {
+			throw new IllegalStateException("newClient(" + _serverString + ") returns null.");
+		}
+		client.establish();
+		return client;
+	}
+
+	private void destroyClient(IKeyValueStoreClient client) throws Exception {
+		if (client != null) {
+			client.shutdown();
+		}
 	}
 
 	/* ------------------------------------------------------------ */
@@ -134,13 +137,13 @@ public abstract class KeyValueStoreSessionIdManager extends AbstractSessionIdMan
 		if (session == null) {
 			return;
 		}
-
 		log.debug("addSession:" + session.getId());
 	}
 
 	/* ------------------------------------------------------------ */
 	public void removeSession(HttpSession session) {
 		// nop
+		log.debug("removeSession:" + session.getId());
 	}
 
 	/* ------------------------------------------------------------ */
@@ -184,10 +187,10 @@ public abstract class KeyValueStoreSessionIdManager extends AbstractSessionIdMan
 	}
 
 	protected byte[] getKey(String idInCluster) {
-		log.debug("get: id=" + idInCluster);
+		log.debug("getKey: id=" + idInCluster);
 		byte[] raw = null;
 		try {
-			raw = _clients.get().get(mangleKey(idInCluster));
+			raw = _pool.get().get(mangleKey(idInCluster));
 		} catch (KeyValueStoreClientException error) {
 			log.warn("unable to get key: id=" + idInCluster, error);
 		}
@@ -202,10 +205,10 @@ public abstract class KeyValueStoreSessionIdManager extends AbstractSessionIdMan
 		if (expiry < 0) {
 			expiry = 0; // 0 means forever
 		}
-		log.debug("set: id=" + idInCluster + ", expiry=" + expiry);
+		log.debug("setKey: id=" + idInCluster + ", expiry=" + expiry);
 		boolean result = false;
 		try {
-			result = _clients.get().set(mangleKey(idInCluster), raw, expiry);
+			result = _pool.get().set(mangleKey(idInCluster), raw, expiry);
 		} catch (KeyValueStoreClientException error) {
 			log.warn("unable to set key: id=" + idInCluster, error);
 		}
@@ -223,7 +226,7 @@ public abstract class KeyValueStoreSessionIdManager extends AbstractSessionIdMan
 		log.debug("add: id=" + idInCluster + ", expiry=" + expiry);
 		boolean result = false;
 		try {
-			result = _clients.get().add(mangleKey(idInCluster), raw, expiry);
+			result = _pool.get().add(mangleKey(idInCluster), raw, expiry);
 		} catch (KeyValueStoreClientException error) {
 			log.warn("unable to add key: id=" + idInCluster, error);
 		}
@@ -234,7 +237,7 @@ public abstract class KeyValueStoreSessionIdManager extends AbstractSessionIdMan
 		log.debug("delete: id=" + idInCluster);
 		boolean result = false;
 		try {
-			result = _clients.get().delete(mangleKey(idInCluster));
+			result = _pool.get().delete(mangleKey(idInCluster));
 		} catch (KeyValueStoreClientException error) {
 			log.warn("unable to delete key: id=" + idInCluster, error);
 		}
@@ -279,6 +282,14 @@ public abstract class KeyValueStoreSessionIdManager extends AbstractSessionIdMan
 
 	public void setTimeoutInMs(int timeoutInMs) {
 		this._timeoutInMs = timeoutInMs;
+	}
+
+	public int getPoolSize() {
+		return _poolSize;
+	}
+
+	public void setPoolSize(int poolSize) {
+		this._poolSize = poolSize;
 	}
 
 	/**
