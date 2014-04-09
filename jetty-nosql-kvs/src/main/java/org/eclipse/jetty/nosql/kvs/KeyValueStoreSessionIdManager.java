@@ -279,6 +279,12 @@ public abstract class KeyValueStoreSessionIdManager extends AbstractSessionIdMan
 		boolean result = false;
 		try {
 			result = _pool.get().delete(mangleKey(idInCluster));
+			if (result == false) {
+				byte[] raw = _pool.get().get(mangleKey(idInCluster));
+				if (raw == null) {
+					result = true; // expired already
+				}
+			}
 		} catch (KeyValueStoreClientException error) {
 			log.warn("unable to delete key: id=" + idInCluster, error);
 		}
