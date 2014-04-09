@@ -100,7 +100,7 @@ public abstract class KeyValueStoreSessionIdManager extends AbstractSessionIdMan
 								log.debug("Remove from cache " + session.getId());
 								try {
 									if (System.currentTimeMillis() - session.getLastAccessedTime() > _defaultExpiry) {
-										log.debug("Session timeout, invalidating session " + session.getId());
+										log.info("Session timeout, invalidating session " + session.getId());
 										session.invalidate();
 									}
 								} catch (Exception e) {
