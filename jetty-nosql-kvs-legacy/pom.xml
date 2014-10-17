@@ -2,11 +2,11 @@
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
 		<groupId>com.geishatokyo.jetty</groupId>
-		<artifactId>jetty-nosql-memcached-parent</artifactId>
+		<artifactId>jetty-nosql-memcached-legacy-parent</artifactId>
 		<version>0.3.2-KL-SNAPSHOT</version>
 	</parent>
-	<artifactId>jetty-nosql-kvs</artifactId>
-	<name>jetty-nosql-kvs</name>
+	<artifactId>jetty-nosql-kvs-legacy</artifactId>
+	<name>jetty-nosql-kvs-legacy</name>
 	<description>An abstract session manager impl for jetty to store sessions on key-value-store.</description>
 	<dependencies>
 		<dependency>
