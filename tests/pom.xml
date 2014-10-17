@@ -2,15 +2,15 @@
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
 		<groupId>com.geishatokyo.jetty</groupId>
-		<artifactId>jetty-nosql-memcached-parent</artifactId>
+		<artifactId>jetty-nosql-memcached-legacy-parent</artifactId>
 		<version>0.3.2-KL-SNAPSHOT</version>
 	</parent>
 	<groupId>com.geishatokyo.jetty.tests</groupId>
-	<artifactId>jetty-nosql-memcached-tests</artifactId>
-	<name>jetty-nosql-memcached-tests</name>
+	<artifactId>jetty-nosql-memcached-legacy-tests</artifactId>
+	<name>jetty-nosql-memcached-legacy-tests</name>
 	<description>Test cases for jetty-nosql-memcached and relating projects.</description>
 	<packaging>pom</packaging>
 	<modules>
-		<module>test-memcached-sessions</module>
+		<module>test-memcached-sessions-legacy</module>
 	</modules>
 </project>
