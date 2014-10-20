@@ -15,8 +15,9 @@ package org.eclipse.jetty.nosql.kvs;
 //========================================================================
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Random;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 import javax.servlet.http.HttpServletRequest;
@@ -327,10 +328,24 @@ public abstract class KeyValueStoreSessionIdManager extends AbstractSessionIdMan
 	}
 
     public void setServerString(final String serverString) {
-        String[] splitted = StringUtils.split(serverString, ' ');
-        Arrays.sort(splitted);
-        this._serverString = StringUtils.join(splitted, ' ');
+
+        try {
+            List<String> ipAddresses = new ArrayList<String>();
+            for (String s : StringUtils.split(serverString, ' ')) {
+                String[] split = StringUtils.split(s, ':');
+                String host = split[0];
+                String port = split[1];
+
+                ipAddresses.add(InetAddress.getByName(host).getHostAddress() + ":" + port);
+            }
+
+            Collections.sort(ipAddresses);
+            this._serverString = StringUtils.join(ipAddresses, ' ');
+        } catch (UnknownHostException e) {
+            throw new RuntimeException("Unknown memcached host", e);
+        }
     }
+
 	public int getTimeoutInMs() {
 		return _timeoutInMs;
 	}
