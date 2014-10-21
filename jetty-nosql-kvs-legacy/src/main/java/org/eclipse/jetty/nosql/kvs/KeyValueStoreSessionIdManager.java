@@ -15,8 +15,7 @@ package org.eclipse.jetty.nosql.kvs;
 //========================================================================
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 import javax.servlet.http.HttpServletRequest;
@@ -331,6 +330,7 @@ public abstract class KeyValueStoreSessionIdManager extends AbstractSessionIdMan
         Arrays.sort(splitted);
         this._serverString = StringUtils.join(splitted, ' ');
     }
+
 	public int getTimeoutInMs() {
 		return _timeoutInMs;
 	}
