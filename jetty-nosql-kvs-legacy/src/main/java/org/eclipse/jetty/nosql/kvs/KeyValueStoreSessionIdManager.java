@@ -156,14 +156,7 @@ public abstract class KeyValueStoreSessionIdManager extends AbstractSessionIdMan
 	 * is the session id known to memcached, and is it valid
 	 */
     public boolean idInUse(final String idInCluster) {
-        // reserve the id with a dummy session
-        boolean exists = !addKey(idInCluster, SerializationUtils.serialize(new SerializableSession()));
-
-        // do not check the validity of the session since
-        // we do not save invalidated sessions anymore.
-
-        _cache.getIfPresent(idInCluster);
-        return exists;
+		return getKey(idInCluster) != null;
     }
 
 	/* ------------------------------------------------------------ */
