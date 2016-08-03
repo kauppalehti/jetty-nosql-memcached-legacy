@@ -246,7 +246,13 @@ public class KeyValueStoreSessionManager extends NoSqlSessionManager {
 	@Override
 	protected NoSqlSession loadSession(final String clusterId) {
 		log.debug("loadSession: loading: id=" + clusterId);
-		ISerializableSession data = getKey(clusterId);
+		ISerializableSession data = null;
+		try {
+			data = getKey(clusterId);
+		} catch (TranscoderException e) {
+			log.warn("loadSession: getKey failed for id=" + clusterId, e);
+			return null;
+		}
 		log.debug("loadSession: loaded: id=" + clusterId + ", data=" + data);
 
 		if (data == null) {
