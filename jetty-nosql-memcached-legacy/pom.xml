@@ -3,7 +3,7 @@
 	<parent>
 		<groupId>com.geishatokyo.jetty</groupId>
 		<artifactId>jetty-nosql-memcached-legacy-parent</artifactId>
-		<version>0.3.6-KL-SNAPSHOT</version>
+		<version>0.3.6-KL</version>
 	</parent>
 	<artifactId>jetty-nosql-memcached-legacy</artifactId>
 	<name>jetty-nosql-memcached-legacy</name>
