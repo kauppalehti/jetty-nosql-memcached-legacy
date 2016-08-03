@@ -3,7 +3,7 @@
 	<parent>
 		<groupId>com.geishatokyo.jetty.tests</groupId>
 		<artifactId>jetty-nosql-memcached-legacy-tests</artifactId>
-		<version>0.3.6-KL</version>
+		<version>0.3.7-KL-SNAPSHOT</version>
 	</parent>
 	<artifactId>test-memcached-sessions-legacy</artifactId>
 	<name>test-memcached-sessions-legacy</name>
@@ -20,7 +20,7 @@
 		<dependency>
 			<groupId>com.geishatokyo.jetty</groupId>
 			<artifactId>jetty-nosql-memcached-legacy</artifactId>
-            <version>0.3.6-KL</version>
+            <version>0.3.7-KL-SNAPSHOT</version>
         </dependency>
 		<dependency><!-- added slf4j as dependency since xmemcached requires it on testing -->
 			<groupId>org.slf4j</groupId>
